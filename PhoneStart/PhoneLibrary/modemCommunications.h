@@ -32,8 +32,8 @@
 //includes
 #include <hardwareSerial.h>	//for serial support
 #include <stream.h>
-#include <phone_debug.h> //for debug support
-#include <constants.h>	//for global constants
+#include "phone_debug.h" //for debug support
+#include "constants.h"	//for global constants
 
 
 

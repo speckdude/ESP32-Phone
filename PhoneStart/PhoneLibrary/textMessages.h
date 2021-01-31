@@ -30,8 +30,8 @@
 //includes
 //#include <hardwareSerial.h>	//for serial support
 //#include <stream.h>			//for serial support
-#include <phone_debug.h> //for debug support
-#include <modem.h> //for modem handleing
+#include "phone_debug.h" //for debug support
+#include "modem.h" //for modem handleing
 
 //~~~~~~~~~~~~~~~~~~~~~~~~defines & enums~~~~~~~~~~~~~~~~~~~~~~~
 enum PDUMode { //defined in modem now

@@ -18,34 +18,43 @@
 ///SOFTWARE.
 */
 
-#ifndef DEBUG_C
-#define DEBUG_C
+/*This header contains modem management for esp32 cellphone project
+*
+*
+*
+*
+*
+*/
 
-#include <phone_debug.h>
+#ifndef MODEMMANAGER_H
+#define MODEMMANAGER_H
 
-void PRINTS(char *s) 
-{ 
-#if DEBUG
-	Serial.print(F(s));
-#endif
-}
+#include <FreeRTOS.h> //for queue and threads
 
-void PRINT(char *s, char *v)
-{ 
-#if DEBUG
-	Serial.print(F(s));
-	Serial.print(v);
-#endif
-}
+#include "modem.h"
+#include "phone_debug.h"
+#include "constants.h"
 
-void PRINTX(char* s, char* v)
+
+
+#define QUEUE_SIZE 5
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~type definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+enum modemQueueResult 
 {
-#if DEBUG
-	Serial.print(F(s));
-	Serial.print(F("0x"));
-	Serial.print((int)v, HEX);
-#endif
-}
+	modemQueueTimeout = -1,
+	modemQueueSuccess
+};
+
+
+//~~~~~~~~~~~~~~~~~~~~~~~~Variables~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+extern TaskHandle_t modemReadereManager;  //Not sure if other tasks will need these handles rn
+extern TaskHandle_t modemWriterManager;
+
+//~~~~~~~~~~~~~~~~~~~~~~~function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void setupModemManager(int RXPin, int TXPin);
+modemQueueResult  sendModemCommand(char* command, char* arguments, int timeout);
+modemQueueResult  enqueueCommand(short commandArrayLoc, int timeout);
 
 
 

@@ -30,7 +30,7 @@
 #define MODEM_C
 
 //includes
-#include <modem.h>
+#include "modem.h"
 
 //static function defintions
 static resultCode checkForResultCode(char *responseStr)

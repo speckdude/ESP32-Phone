@@ -30,7 +30,7 @@
 #ifndef MODEMMANAGER_C
 #define MODEMMANAGER_C
 
-#include<modemManager.h>
+#include "modemManager.h"
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~type definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //modemCommand data struct

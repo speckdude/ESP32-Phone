@@ -18,67 +18,30 @@
 ///SOFTWARE.
 */
 
-/*This header contains modem functions for esp32 cellphone project
-*
-*
-*
-*
-*
-*/
+// handles all debug printouts
 
-#ifndef MODEM_H
-#define MODEM_H
+#ifndef DEBUG_H
+#define DEBUG_H
 
 //includes
-#include <modemCommunications.h>
-#include <string.h>
-#include <phone_debug.h>	//for debug suppport
-#include <constants.h>
+#include <stream.h>
+#include <HardwareSerial.h>
+#include "constants.h"
 
-//enums
-enum resultCode
-{
-	AT_NOT_RESULT=-1,
-	AT_OK,
-	AT_CONNECT,
-	AT_RING,
-	AT_NO_CARRIER,
-	AT_ERROR,
-	AT_NO_DIALTONE,
-	AT_BUSY,
-	AT_NO_ANSWER
-};
 
+//defines
+//check constants file for debug value
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~type definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-typedef struct modem {					//modem object
-	pModemCommunicationsObj mdmComObj; //pointer to modem communications object
-} Modem;
-typedef Modem *pModem;
-
-typedef struct ATCommand {
-	char *command;
-	char *args;
-}ATCommand;
 
 
 //~~~~~~~~~~~~~~~~~~~static function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-static resultCode checkForResultCode(char *responseStr);
+
 
 //~~~~~~~~~~~~~~~~~~~~~~~function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//create/destroy modem
-pModem createModem(int RXPin, int TXPin);
-void destroyModem(pModem myModem);
 
-//~~~~~~~~~~modem functions~~~~~~~~~~~~~
-//modem write
-int sendATCommand(pModem myModem, ATCommand command);
-int sendRawData(pModem myModem, char* data);
+void PRINTS(char *s);
+void PRINT(char *s, char *v);
+void PRINTX(char *s, char *v);
 
-//modem read
-resultCode getCommandResponse(pModem myModem);
-int checkExpectedResponse(pModem myModem, char *response);
-
-//misc
-int checkModem(pModem myModem);
 #endif
