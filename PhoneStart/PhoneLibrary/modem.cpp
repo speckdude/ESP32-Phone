@@ -32,7 +32,13 @@
 //includes
 #include "modem.h"
 
-//static function defintions
+//~~~~~~~~~~~~~~~~~~~~~~~~Variables~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+char responseList[][16] = {"OK\r\n", "ERROR\r\n", "+CME ERROR\r\n", "+CMS ERROR\r\n"};
+
+//~~~~~~~~~~~~~~~~~~~static function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+//~~~~~~~~~~~~~~~~~~~static functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 static resultCode checkForResultCode(char *responseStr)
 {
 	if(strstr(responseStr, "OK\r\n") != NULL)
@@ -49,7 +55,7 @@ static resultCode checkForResultCode(char *responseStr)
 
 
 
-//function definitions
+//~~~~~~~~~~~~~~~~~~~~~~~functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 //function createmodem
 //	creates modem object
@@ -61,7 +67,7 @@ static resultCode checkForResultCode(char *responseStr)
 
 pModem createModem(int RXPin, int TXPin)
 {
-	pModem myModem = (pModem)malloc(sizeof(Modem));
+	pModem myModem = (pModem)malloc(sizeof(modem));
 	if (myModem == NULL) {
 		return NULL;
 	}
@@ -123,6 +129,29 @@ int sendRawData(pModem myModem, char* data)
 {
 	modemWrite(myModem->mdmComObj, data);
 }
+
+//function readModemMessage
+//	This function is intended to read Messages from the modem
+//Input:
+//	myModem:	The modem object to expect response
+//
+//Returns:
+//	result code:	Error or success.
+resultCode readModemMessage(pModem myModem)
+{
+	char* response;
+	resultCode Code = AT_NOT_RESULT;
+
+	while (Code == AT_NOT_RESULT)
+	{
+		response = modemReadLine(myModem->mdmComObj);
+		Code = checkForResultCode(response);
+
+	}
+	return Code;
+}
+
+
 
 //function getCommandResponse
 //	This function is intended to get response from an AT command

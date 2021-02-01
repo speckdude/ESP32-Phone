@@ -37,10 +37,9 @@
 typedef struct modemCommand {
 	ATCommand command;
 	char modemResponseBuffer[MODEM_IN_BUFFER_SIZE];
-}ModemCommand;
-typedef ModemCommand* pModemCommand;
+};
+typedef modemCommand* pModemCommand;
 
-typedef short modemCommandLoc;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~Variables~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //modem
@@ -74,6 +73,7 @@ static void runModemReader(void* info)
 	//deal with unsolicited modem communications
 	while (true)
 	{
+		//TODO
 		if (checkModem(myModem))
 		{
 			handleIncomingModemData();
@@ -108,11 +108,16 @@ static void runModemWriter(void* info)
 //	None
 static void handleIncomingModemData()
 {
+	modemCommandLoc recievedCommandLoc;
 	//todo, this works for now
 	while (checkModem(myModem))
 	{
 		modemReadLine(myModem->mdmComObj);
 	}
+
+	//todo
+	xQueueReceive(sentCommand, &recievedCommandLoc, 0);
+	//todo: notify timed out command that no response was ever recieved
 }
 
 //function handleOutgoingModemData
@@ -183,9 +188,11 @@ void setupModemManager(int RXPin, int TXPin)
 //function sendModemCommand
 //	Requests and populates a ModemCommand, then queues it to be sent
 //Input:
-//	command:	pointer to a character array
-//	arguments:	pointer to a character array containing modem command arguments
-//	maxTime:	max time to wait to Enqueue a command. 0 means return immediatly if queue already full
+//	command:		pointer to a character array
+//	arguments:		pointer to a character array containing modem command arguments
+//  autoResponse:	pointer to a character array containing raw data to be sent in the case of a split command
+//						eg: where we send a command, wait for a ">" response from the modem. Leave null for most commands
+//	maxTime:		max time to wait to Enqueue a command. 0 means return immediatly if queue already full
 //returns:
 //	result, either success or timeout
 modemQueueResult  sendModemCommand(char* command, char* arguments, int timeout)

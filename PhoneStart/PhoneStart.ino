@@ -49,9 +49,9 @@ void loop()
   if (Serial.available()) 
   {
     Serial.readBytes(input, sizeof(input));
-    sendModemCommand(NULL, NULL, 0);
+    //sendModemCommand(NULL, NULL, 0);
     //parseInput(input);
-    //sendTextMessage(SIM,"19515512292","This is a test");
+    sendASCIITextMessage("19515512292","This is a test");
   }
 }
 

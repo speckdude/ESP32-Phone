@@ -149,20 +149,22 @@ int setPDUMode(pModem myModem, PDUMode mode)
 //returns:
 //	integer:	error(-1) or success(1).
 
-int sendASCIITextMessage(pModem myModem, char *phoneNumber, char *message)
+int sendASCIITextMessage(char *phoneNumber, char *message)
 {
 	char command[16];
-	char args[256];
-	ATCommand myATCom = { 
-		.command = command,//"+CMGF",
-		.args = args//"=1" 
-	};
+	char args[32];
+	modemQueueResult commandResult;
 
-	strcpy(command, "+CMGS");
+	strcpy(command, "+CMGW");
 	strcpy(args, "=\"");
-	strcat(myATCom.args, phoneNumber);
-	strcat(myATCom.args, "\"");
+	strcat(args, phoneNumber);
+	strcat(args, "\" \r");
 
+	//todo, figure out PDU message encoding....
+
+	commandResult = sendModemCommand(command, args, 1000);
+
+	/* OLD CODE
 	sendATCommand(myModem, myATCom);
 	//check for > indication
 	while (checkModem(myModem) == 0)
@@ -176,6 +178,8 @@ int sendASCIITextMessage(pModem myModem, char *phoneNumber, char *message)
 	}
 	sendRawData(myModem, message);
 	sendRawData(myModem, "\x1A");	//to indicate end of message
+
+	*/
 	return 0;
 }
 

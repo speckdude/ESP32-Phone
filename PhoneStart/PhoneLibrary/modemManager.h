@@ -47,14 +47,16 @@ enum modemQueueResult
 };
 
 
+typedef short modemCommandLoc;
+
 //~~~~~~~~~~~~~~~~~~~~~~~~Variables~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 extern TaskHandle_t modemReadereManager;  //Not sure if other tasks will need these handles rn
 extern TaskHandle_t modemWriterManager;
 
 //~~~~~~~~~~~~~~~~~~~~~~~function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void setupModemManager(int RXPin, int TXPin);
-modemQueueResult  sendModemCommand(char* command, char* arguments, int timeout);
-modemQueueResult  enqueueCommand(short commandArrayLoc, int timeout);
+modemQueueResult  sendModemCommand(char* command, char* arguments,  int timeout);
+modemQueueResult  enqueueCommand(modemCommandLoc commandArrayLoc, int timeout);
 
 
 

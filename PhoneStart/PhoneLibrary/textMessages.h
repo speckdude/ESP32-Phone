@@ -31,7 +31,7 @@
 //#include <hardwareSerial.h>	//for serial support
 //#include <stream.h>			//for serial support
 #include "phone_debug.h" //for debug support
-#include "modem.h" //for modem handleing
+#include "modemManager.h" //for modem handleing
 
 //~~~~~~~~~~~~~~~~~~~~~~~~defines & enums~~~~~~~~~~~~~~~~~~~~~~~
 enum PDUMode { //defined in modem now
@@ -83,7 +83,7 @@ int setPDUMode(pModem myModem, PDUMode mode);
 int setCNMIMode(pModem myModem, CNMI_MODE cnmi_mode, CNMI_MT cnmi_mt, CNMI_BM cnmi_bm, CNMI_DS cnmi_ds, CNMI_BFR cnmi_bfr);
 
 //send/receive
-int sendASCIITextMessage(pModem myModem, char *phoneNumber, char *message);
+int sendASCIITextMessage(char *phoneNumber, char *message);
 
 int readAllUnreadMessages(pModem myModem);
 int readAllReadMessages(pModem myModem);

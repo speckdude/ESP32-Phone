@@ -41,9 +41,9 @@
 typedef struct modemCommunicationsObj {
 	HardwareSerial *serial;
 	char inBuffer[MODEM_IN_BUFFER_SIZE];	//should I have this buffer for intermediate storage? currently to store data until whole response recieved.
-}ModemCommunicationsObj;
+};
 
-typedef ModemCommunicationsObj *pModemCommunicationsObj;
+typedef modemCommunicationsObj *pModemCommunicationsObj;
 
 //functions
 

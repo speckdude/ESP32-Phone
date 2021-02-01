@@ -36,7 +36,7 @@
 #include "phone_debug.h"	//for debug suppport
 #include "constants.h"
 
-//enums
+////~~~~~~~~~~~~~~~~~~~~~~~~enums~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 enum resultCode
 {
 	AT_NOT_RESULT=-1,
@@ -54,13 +54,13 @@ enum resultCode
 //~~~~~~~~~~~~~~~~~~~~~~~~~type definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 typedef struct modem {					//modem object
 	pModemCommunicationsObj mdmComObj; //pointer to modem communications object
-} Modem;
-typedef Modem *pModem;
+};
+typedef modem *pModem;
 
 typedef struct ATCommand {
 	char *command;
 	char *args;
-}ATCommand;
+};
 
 
 //~~~~~~~~~~~~~~~~~~~static function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
