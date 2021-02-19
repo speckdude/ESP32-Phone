@@ -1,4 +1,4 @@
-/*Copyright(c) 2021 speckdude
+  /*Copyright(c) 2021 speckdude
 ///Permission is hereby granted, free of charge, to any person obtaining a copy
 ///of this softwareand associated documentation files(the "Software"), to deal
 ///in the Software without restriction, including without limitation the rights
@@ -39,7 +39,7 @@ void setup() {
   // initialize both serial ports:
   Serial.begin(115200);
   setupModemManager(RX,TX);
-  //configureTextMessaging(SIM);
+  configureTextMessaging();
   pinMode(LED_BUILTIN, OUTPUT);
 }
   
@@ -50,8 +50,8 @@ void loop()
   {
     Serial.readBytes(input, sizeof(input));
     //sendModemCommand(NULL, NULL, 0);
-    //parseInput(input);
-    sendASCIITextMessage("19515512292","This is a test");
+    parseInput(input);
+    //sendASCIITextMessage("19515512292","This is a test");
   }
 }
 
@@ -64,8 +64,8 @@ void parseInput(char *input)
 {
   //check for all cases with if statements because case do not work
   if(strstr(input, "send text") != NULL)  sendTextRoutine();
-  //if(strstr(input, "read unread") !=NULL) readAllUnreadMessages(SIM);
-  //if(strstr(input, "read read") != NULL)  readAllReadMessages(SIM);
+  if(strstr(input, "read unread") !=NULL) readAllUnreadMessages();
+  if(strstr(input, "read read") != NULL)  readAllReadMessages();
 }
 
 void sendTextRoutine()
@@ -84,5 +84,5 @@ void sendTextRoutine()
   messageLen = Serial.available();
   Serial.readBytes(message, messageLen);
   message[messageLen] = '\0';
-  //sendASCIITextMessage(SIM, phoneNumber, message);
+  sendASCIITextMessage(phoneNumber, message);
 }

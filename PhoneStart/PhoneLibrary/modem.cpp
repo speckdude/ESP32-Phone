@@ -93,31 +93,7 @@ void destroyModem(pModem myModem)
 }
 
 
-//function sendAtCommand
-//	This function is intended to send AT commands to the modem
-//Input:
-//	myModem		A referance to the Modem object to send command to 
-//	ATCommand command:				The AT command to be sent
-//
-//Returns:
-//	Integer:	Error or success.
-int sendATCommand(pModem myModem, ATCommand command)
-{
-	char commandString[128] = "AT";
-	if (command.command != NULL)
-	{
-		strcat(commandString, command.command);
-	}
-	if (command.args != NULL)
-	{
-		strcat(commandString, command.args);
-	}
-	strcat(commandString, "\r");
-	modemWrite(myModem->mdmComObj, commandString);
-	return 0;
-}
-
-//function sendRawData
+//function sendModemData
 //	This function is intended to send data to the modem
 //Input:
 //	myModem		A referance to the Modem object to send command to 
@@ -125,7 +101,7 @@ int sendATCommand(pModem myModem, ATCommand command)
 //
 //Returns:
 //	Integer:	Error or success.
-int sendRawData(pModem myModem, char* data)
+int sendModemData(pModem myModem, char* data)
 {
 	modemWrite(myModem->mdmComObj, data);
 }

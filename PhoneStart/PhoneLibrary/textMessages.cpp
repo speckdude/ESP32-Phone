@@ -31,11 +31,12 @@
 
 //Function defintions
 
-int configureTextMessaging(pModem myModem)
+int configureTextMessaging()
 {
-	setPDUMode(myModem, ASCII_TEXT_MODE);
-	setCNMIMode(myModem, MODE_LEAVE_BLANK, MT_LEAVE_BLANK, BM_LEAVE_BLANK, DS_LEAVE_BLANK, BFR_LEAVE_BLANK);
+	setPDUMode(ASCII_TEXT_MODE);
+	setCNMIMode(MODE_LEAVE_BLANK, MT_LEAVE_BLANK, BM_LEAVE_BLANK, DS_LEAVE_BLANK, BFR_LEAVE_BLANK);
 }
+
 
 //function setCNMIMode
 //this function sets the Modem text message recieve notification modes
@@ -47,26 +48,22 @@ int configureTextMessaging(pModem myModem)
 //
 //returns:
 //	integer:	error(-1) or success(1).
-int setCNMIMode(pModem myModem, CNMI_MODE cnmi_mode, CNMI_MT cnmi_mt, CNMI_BM cnmi_bm, CNMI_DS cnmi_ds, CNMI_BFR cnmi_bfr)
+int setCNMIMode(CNMI_MODE cnmi_mode, CNMI_MT cnmi_mt, CNMI_BM cnmi_bm, CNMI_DS cnmi_ds, CNMI_BFR cnmi_bfr)
 {
 	bool cont = true;
+	char command[128] = "";
 	char tempBuf[8] = "";
-	char command[16] = "";
-	char args[16] = "";
-	ATCommand myATCom = {
-		.command = command,
-		.args = args
-	};
+
 	//create command
-	strcpy(command, "+CNMI");
+	strcpy(command, "AT+CNMI");
 	if(cnmi_mode == LEAVE_BLANK) //this sets to modem default values
 	{
 		cont = false;
 	}
 	else
 	{
-		strcpy(args, "=");
-		strcat(args, itoa(cnmi_mode, tempBuf, 10));
+		strcat(command, "=");
+		strcat(command, itoa(cnmi_mode, tempBuf, 10));
 	}
 	if (cnmi_mt == LEAVE_BLANK && cont) //this sets to modem default values
 	{
@@ -74,8 +71,8 @@ int setCNMIMode(pModem myModem, CNMI_MODE cnmi_mode, CNMI_MT cnmi_mt, CNMI_BM cn
 	}
 	else if (cont)
 	{
-		strcat(args, ",");
-		strcat(args, itoa(cnmi_mt, tempBuf, 10));
+		strcat(command, ",");
+		strcat(command, itoa(cnmi_mt, tempBuf, 10));
 	}
 	if (cnmi_bm == LEAVE_BLANK && cont) //this sets to modem default values
 	{
@@ -83,8 +80,8 @@ int setCNMIMode(pModem myModem, CNMI_MODE cnmi_mode, CNMI_MT cnmi_mt, CNMI_BM cn
 	}
 	else if (cont)
 	{
-		strcat(args, ",");
-		strcat(args, itoa(cnmi_bm, tempBuf, 10));
+		strcat(command, ",");
+		strcat(command, itoa(cnmi_bm, tempBuf, 10));
 	}
 	if (cnmi_ds == LEAVE_BLANK && cont) //this sets to modem default values
 	{
@@ -92,8 +89,8 @@ int setCNMIMode(pModem myModem, CNMI_MODE cnmi_mode, CNMI_MT cnmi_mt, CNMI_BM cn
 	}
 	else if (cont)
 	{
-		strcat(args, ",");
-		strcat(args, itoa(cnmi_ds, tempBuf, 10));
+		strcat(command, ",");
+		strcat(command, itoa(cnmi_ds, tempBuf, 10));
 	}
 	if (cnmi_bfr == LEAVE_BLANK && cont) //this sets to modem default values
 	{
@@ -101,11 +98,12 @@ int setCNMIMode(pModem myModem, CNMI_MODE cnmi_mode, CNMI_MT cnmi_mt, CNMI_BM cn
 	}
 	else if (cont)
 	{
-		strcat(args, ",");
-		strcat(args, itoa(cnmi_bfr, tempBuf, 10));
+		strcat(command, ",");
+		strcat(command, itoa(cnmi_bfr, tempBuf, 10));
 	}
+	strcat(command, "\r");
 	//send command
-	return sendATCommand(myModem, myATCom);
+	return sendModemCommand(command, 0);
 }
 
 //function setPDUMode
@@ -116,28 +114,26 @@ int setCNMIMode(pModem myModem, CNMI_MODE cnmi_mode, CNMI_MT cnmi_mt, CNMI_BM cn
 //
 //returns:
 //	integer:	error(-1) or success(1).
-int setPDUMode(pModem myModem, PDUMode mode)
+int setPDUMode(PDUMode mode)
 {
 	char command[16] = "";
-	char args[8] = "";
-	ATCommand myATCom = {
-		.command = command,
-		.args = args
-	};
 
 	//send AT+CMGF=1 command, recieve response
-	strcpy(command, "+CMGF");
-	if(mode = PDU_TEXT_MODE)		strcpy(args, "=0");
-	else if(mode = ASCII_TEXT_MODE)	strcpy(args, "=1");
+	strcpy(command, "AT+CMGF");
+	if(mode = PDU_TEXT_MODE)		strcpy(command, "=0\r");
+	else if(mode = ASCII_TEXT_MODE)	strcpy(command, "=1\r");
 
-	sendATCommand(myModem, myATCom);
+	sendModemCommand(command, 0);
+	/*old code....not super relevant. Test case for callbacks?
 	if (getCommandResponse(myModem) == AT_ERROR) //if error return
 	{
 		PRINTS("PDU Response ERROR\n");
 		return -1;
 	}
+	*/
 	return 1;
 }
+
 
 //function sendtextmessage
 //this function is intended to command the sim5320a to send a text message
@@ -151,62 +147,34 @@ int setPDUMode(pModem myModem, PDUMode mode)
 
 int sendASCIITextMessage(char *phoneNumber, char *message)
 {
-	char command[16];
-	char args[32];
+	char command[32];
+	char tempMessage[strlen(message) + 1];
 	modemQueueResult commandResult;
 
-	strcpy(command, "+CMGW");
-	strcpy(args, "=\"");
-	strcat(args, phoneNumber);
-	strcat(args, "\" \r");
+	strcpy(command, "AT+CMGS=\"");
+	strcat(command, phoneNumber);
+	strcat(command, "\" \r");
 
+	strcpy(tempMessage, message);
+	strcat(tempMessage, "\x1A");
 	//todo, figure out PDU message encoding....
-
-	commandResult = sendModemCommand(command, args, 1000);
-
-	/* OLD CODE
-	sendATCommand(myModem, myATCom);
-	//check for > indication
-	while (checkModem(myModem) == 0)
+	//Workaround for now
+	if (sendModemCommand(command, 1000) == modemQueueSuccess)
 	{
-		//stall
+		//just *PRAY* to the Cell phone gods that the text data is entered into the command array one behind the modemCommand
+		return sendModemCommand(tempMessage, 1000);
 	}
-	if(checkExpectedResponse(myModem, ">") < 1)
-	{
-		PRINTS("Expected Response Not recieved\n");
-		return -1;
-	}
-	sendRawData(myModem, message);
-	sendRawData(myModem, "\x1A");	//to indicate end of message
-
-	*/
-	return 0;
+	return modemQueueTimeout;
 }
 
-int readAllUnreadMessages(pModem myModem)
+int readAllUnreadMessages()
 {
-	char command[16];
-	char args[32];
-	ATCommand myATCom = {
-		.command = command,
-		.args = args
-	};
-
-	strcpy(command, "+CMGL");
-	strcpy(args, "=\"REC UNREAD\"");
-	return sendATCommand(myModem, myATCom);
+	char command[]= "AT+CMGL=\"REC UNREAD\"\r";
+	return sendModemCommand(command, 0);
 }
 
-int readAllReadMessages(pModem myModem)
+int readAllReadMessages()
 {
-	char command[16];
-	char args[32];
-	ATCommand myATCom = {
-		.command = command,
-		.args = args
-	};
-
-	strcpy(command, "+CMGL");
-	strcpy(args, "=\"REC READ\"");
-	return sendATCommand(myModem, myATCom);
+	char command[]= "AT+CMGL=\"REC READ\"\r";
+	return sendModemCommand(command, 0);
 }

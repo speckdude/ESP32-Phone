@@ -78,13 +78,13 @@ enum CNMI_BFR {	//see https://drive.google.com/file/d/1bJ0kEDtORWAzH9LWy8Kefj69S
 
 //~~~~~~~~~~~~~~~~~~~~~~~~function prototypes~~~~~~~~~~~~~~~~~~~
 //text message modes
-int configureTextMessaging(pModem myModem);
-int setPDUMode(pModem myModem, PDUMode mode);
-int setCNMIMode(pModem myModem, CNMI_MODE cnmi_mode, CNMI_MT cnmi_mt, CNMI_BM cnmi_bm, CNMI_DS cnmi_ds, CNMI_BFR cnmi_bfr);
+int configureTextMessaging();
+int setPDUMode(PDUMode mode);
+int setCNMIMode(CNMI_MODE cnmi_mode, CNMI_MT cnmi_mt, CNMI_BM cnmi_bm, CNMI_DS cnmi_ds, CNMI_BFR cnmi_bfr);
 
 //send/receive
 int sendASCIITextMessage(char *phoneNumber, char *message);
 
-int readAllUnreadMessages(pModem myModem);
-int readAllReadMessages(pModem myModem);
-//int readRecievedMessage(pModem myModem, int msgAddrs);
+int readAllUnreadMessages();
+int readAllReadMessages();
+//int readRecievedMessage(int msgAddrs);

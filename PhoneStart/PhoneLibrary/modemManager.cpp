@@ -35,7 +35,7 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~type definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //modemCommand data struct
 typedef struct modemCommand {
-	ATCommand command;
+	char command[MODEM_MAX_COMMAND_SIZE];
 	char modemResponseBuffer[MODEM_IN_BUFFER_SIZE];
 };
 typedef modemCommand* pModemCommand;
@@ -93,10 +93,6 @@ static void runModemWriter(void* info)
 	while (true)
 	{
 		xQueueReceive(commandWriteQueue, &currentCommand, portMAX_DELAY);
-		if (currentCommand == NULL)
-		{
-			PRINTS("recieve command is null\n");
-		}
 		handleOutgoingModemData(currentCommand);
 		//vTaskDelay(10);
 	}
@@ -140,8 +136,7 @@ static void handleOutgoingModemData(modemCommandLoc mdmCmd)
 		//should need no wait since we just emptied queue
 		xQueueSend(sentCommand, &mdmCmd, 0);
 	}
-
-	sendATCommand(myModem, commandArray[mdmCmd].command);
+	sendModemData(myModem, commandArray[mdmCmd].command);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -189,24 +184,26 @@ void setupModemManager(int RXPin, int TXPin)
 //	Requests and populates a ModemCommand, then queues it to be sent
 //Input:
 //	command:		pointer to a character array
-//	arguments:		pointer to a character array containing modem command arguments
-//  autoResponse:	pointer to a character array containing raw data to be sent in the case of a split command
-//						eg: where we send a command, wait for a ">" response from the modem. Leave null for most commands
 //	maxTime:		max time to wait to Enqueue a command. 0 means return immediatly if queue already full
 //returns:
-//	result, either success or timeout
-modemQueueResult  sendModemCommand(char* command, char* arguments, int timeout)
+//	result, either success(1) or error code (< 0)
+modemQueueResult  sendModemCommand(char* command, int timeout)
 {
 	modemCommandLoc arrayLoc;
+
+	//check if command is longer than allowed length
+	if (strlen(command) > MODEM_MAX_COMMAND_SIZE)
+	{
+		return modemCommandOversized;
+	}
+
 	//request a ModemCommand
 	BaseType_t res = xQueueReceive(availableModemCommands, &arrayLoc, pdMS_TO_TICKS(timeout));
-	PRINTS("modem queue recieved \n");
-	//if timeout
+	//if not timed out
 	if (res == pdPASS)
 	{
 		//if we have a queue position, settup and send command
-		commandArray[arrayLoc].command.command = command;
-		commandArray[arrayLoc].command.args = arguments;
+		strcpy(commandArray[arrayLoc].command, command);
 		return enqueueCommand(arrayLoc, 0);
 	}
 

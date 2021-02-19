@@ -57,11 +57,6 @@ typedef struct modem {					//modem object
 };
 typedef modem *pModem;
 
-typedef struct ATCommand {
-	char *command;
-	char *args;
-};
-
 
 //~~~~~~~~~~~~~~~~~~~static function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 static resultCode checkForResultCode(char *responseStr);
@@ -73,8 +68,7 @@ void destroyModem(pModem myModem);
 
 //~~~~~~~~~~modem functions~~~~~~~~~~~~~
 //modem write
-int sendATCommand(pModem myModem, ATCommand command);
-int sendRawData(pModem myModem, char* data);
+int sendModemData(pModem myModem, char* data);
 
 //modem read
 resultCode getCommandResponse(pModem myModem);

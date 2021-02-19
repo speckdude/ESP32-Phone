@@ -42,8 +42,9 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~~type definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 enum modemQueueResult 
 {
+	modemCommandOversized = -2,
 	modemQueueTimeout = -1,
-	modemQueueSuccess
+	modemQueueSuccess = 1
 };
 
 
@@ -55,7 +56,7 @@ extern TaskHandle_t modemWriterManager;
 
 //~~~~~~~~~~~~~~~~~~~~~~~function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void setupModemManager(int RXPin, int TXPin);
-modemQueueResult  sendModemCommand(char* command, char* arguments,  int timeout);
+modemQueueResult  sendModemCommand(char* command, int timeout);
 modemQueueResult  enqueueCommand(modemCommandLoc commandArrayLoc, int timeout);
 
 

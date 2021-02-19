@@ -27,6 +27,7 @@ void PRINTS(char *s)
 { 
 #if DEBUG
 	Serial.print(F(s));
+	Serial.print('\n');
 #endif
 }
 
@@ -35,6 +36,7 @@ void PRINT(char *s, char *v)
 #if DEBUG
 	Serial.print(F(s));
 	Serial.print(v);
+	Serial.print('\n');
 #endif
 }
 
@@ -44,6 +46,7 @@ void PRINTX(char* s, char* v)
 	Serial.print(F(s));
 	Serial.print(F("0x"));
 	Serial.print((int)v, HEX);
+	Serial.print('\n');
 #endif
 }
 

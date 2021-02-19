@@ -27,3 +27,4 @@
 #define MODEM_IN_BUFFER_SIZE		1024		//buffer size for modem
 #define MODEM_BAUD_RATE				115200		//baud rate for serial coms to modem
 #define MODEM_RESPONSE_WAIT_TIME	1000		//Max number (in milliseconds) to wait for a command to get a response from a sent command
+#define MODEM_MAX_COMMAND_SIZE		559			//max length of command to send to the modem
