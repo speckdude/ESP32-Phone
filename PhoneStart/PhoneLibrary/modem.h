@@ -39,6 +39,7 @@
 ////~~~~~~~~~~~~~~~~~~~~~~~~enums~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 enum resultCode
 {
+	AT_INPUT_OVERFLOW = -2, 
 	AT_NOT_RESULT=-1,
 	AT_OK,
 	AT_CONNECT,
@@ -71,9 +72,10 @@ void destroyModem(pModem myModem);
 int sendModemData(pModem myModem, char* data);
 
 //modem read
-resultCode getCommandResponse(pModem myModem);
+resultCode readModemMessage(pModem myModem, char* messageDataStorage, int storageSize);
 int checkExpectedResponse(pModem myModem, char *response);
 
 //misc
+void flushModemOutput(pModem myModem);
 int checkModem(pModem myModem);
 #endif

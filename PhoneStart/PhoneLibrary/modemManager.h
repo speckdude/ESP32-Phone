@@ -40,11 +40,11 @@
 #define QUEUE_SIZE 5
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~type definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-enum modemQueueResult 
+enum modemQueueResult
 {
-	modemCommandOversized = -2,
-	modemQueueTimeout = -1,
-	modemQueueSuccess = 1
+	MODEM_COMMAND_OVERSIZED = -2,
+	MODEM_QUEUE_TIMEOUT = -1,
+	MODEM_QUEUE_SUCESS = 1
 };
 
 

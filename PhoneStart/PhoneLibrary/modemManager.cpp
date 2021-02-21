@@ -36,7 +36,6 @@
 //modemCommand data struct
 typedef struct modemCommand {
 	char command[MODEM_MAX_COMMAND_SIZE];
-	char modemResponseBuffer[MODEM_IN_BUFFER_SIZE];
 };
 typedef modemCommand* pModemCommand;
 
@@ -53,8 +52,9 @@ QueueHandle_t availableModemCommands;	//FIFO queue for available command space
 QueueHandle_t commandWriteQueue;		//FIFO queue of commands to be written to modem
 QueueHandle_t sentCommand;				//Mailbox Queue of last sent command. Used to guaruntee only one command sent at a time
 
-//buffer
+//buffers/Arrays
 modemCommand commandArray[QUEUE_SIZE];	//Allocated space for our modemCommands
+char modemResponseBuffer[MODEM_IN_BUFFER_SIZE]; //Allocated space for data coming from the Modem
 
 //~~~~~~~~~~~~~~~~~~~static function declarations~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 static void handleIncomingModemData();
@@ -69,15 +69,19 @@ static void runModemWriter(void* info);
 // Void* info (this is currently null)
 static void runModemReader(void* info)
 {
-	PRINTS("Modem Response Thread Started\n");
-	//deal with unsolicited modem communications
+	PRINTS("Modem Response Thread Started\n", STARTUP);
+	//delay for startup. flush input buffer(replace this with a startup method at some point)
+	vTaskDelay(pdMS_TO_TICKS(10000));
+	flushModemOutput(myModem);
+
+	//deal with modem communications
 	while (true)
 	{
-		//TODO
 		if (checkModem(myModem))
 		{
 			handleIncomingModemData();
 		}
+		//todo, theres got to be a better way than just delays...
 		vTaskDelay(10);
 	}
 }
@@ -88,13 +92,14 @@ static void runModemReader(void* info)
 // Void* info (this is currently null)
 static void runModemWriter(void* info)
 {
-	PRINTS("Modem Outgoing Thread Started\n");
+	PRINTS("Modem Outgoing Thread Started\n", STARTUP);
 	modemCommandLoc currentCommand;
+	vTaskDelay(pdMS_TO_TICKS(10000));
+
 	while (true)
 	{
 		xQueueReceive(commandWriteQueue, &currentCommand, portMAX_DELAY);
 		handleOutgoingModemData(currentCommand);
-		//vTaskDelay(10);
 	}
 }
 
@@ -105,15 +110,19 @@ static void runModemWriter(void* info)
 static void handleIncomingModemData()
 {
 	modemCommandLoc recievedCommandLoc;
-	//todo, this works for now
-	while (checkModem(myModem))
-	{
-		modemReadLine(myModem->mdmComObj);
-	}
+	resultCode result;
+
+	//Todo, work in progress
+	result = readModemMessage(myModem, modemResponseBuffer, MODEM_IN_BUFFER_SIZE);
+	PRINT("Modem Message Recieved:\n", modemResponseBuffer, TESTING);
+	//handle the modem message
+	//check if the message is a result of a command
+
+	//else, check for modem events/status messages
 
 	//todo
 	xQueueReceive(sentCommand, &recievedCommandLoc, 0);
-	//todo: notify timed out command that no response was ever recieved
+	//todo, handle callback if one exists
 }
 
 //function handleOutgoingModemData
@@ -158,7 +167,8 @@ void setupModemManager(int RXPin, int TXPin)
 	}
 
 	myModem = createModem(RXPin, TXPin);
-	PRINTS("My Modem Created Sucessfully\n");
+	PRINTS("My Modem Created Sucessfully\n", STARTUP);
+
 	//start modem response thread
 	xTaskCreatePinnedToCore(
 		runModemReader,
@@ -194,7 +204,7 @@ modemQueueResult  sendModemCommand(char* command, int timeout)
 	//check if command is longer than allowed length
 	if (strlen(command) > MODEM_MAX_COMMAND_SIZE)
 	{
-		return modemCommandOversized;
+		return MODEM_COMMAND_OVERSIZED;
 	}
 
 	//request a ModemCommand
@@ -207,7 +217,7 @@ modemQueueResult  sendModemCommand(char* command, int timeout)
 		return enqueueCommand(arrayLoc, 0);
 	}
 
-	return modemQueueTimeout;
+	return MODEM_QUEUE_TIMEOUT;
 }
 
 //function enqueueModemCommand
@@ -223,11 +233,11 @@ modemQueueResult enqueueCommand(modemCommandLoc commandArrayLoc, int timeout)
 	// if for some reason res fails (should NOT happen at this point)
 	if (res == errQUEUE_FULL)
 	{
-		PRINTS("ERROR: modemCommand location reserved but unable to be sent\n");
+		PRINTS("ERROR: modemCommand location reserved but unable to be sent\n", ERROR);
 		xQueueSend(availableModemCommands, &commandArrayLoc, 0);
 	}
 
-	return ((res == pdPASS) ? modemQueueSuccess : modemQueueTimeout);
+	return ((res == pdPASS) ? MODEM_QUEUE_SUCESS : MODEM_QUEUE_TIMEOUT);
 }
 
 

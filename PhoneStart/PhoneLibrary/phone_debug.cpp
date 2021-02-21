@@ -23,30 +23,44 @@
 
 #include "phone_debug.h"
 
-void PRINTS(char *s) 
+debugLevel currentLevel = STARTUP;
+
+
+void setDebugLevel(debugLevel level)
+{
+	currentLevel = level;
+}
+
+void PRINTS(char *s, debugLevel level) 
 { 
 #if DEBUG
-	Serial.print(F(s));
-	Serial.print('\n');
+	if (level >= currentLevel)
+	{
+		Serial.print(F(s));
+	}
 #endif
 }
 
-void PRINT(char *s, char *v)
+void PRINT(char *s, char *v, debugLevel level)
 { 
 #if DEBUG
-	Serial.print(F(s));
-	Serial.print(v);
-	Serial.print('\n');
+	if (level >= currentLevel)
+	{
+		Serial.print(F(s));
+		Serial.print(v);
+	}
 #endif
 }
 
-void PRINTX(char* s, char* v)
+void PRINTX(char* s, char* v, debugLevel level)
 {
 #if DEBUG
-	Serial.print(F(s));
-	Serial.print(F("0x"));
-	Serial.print((int)v, HEX);
-	Serial.print('\n');
+	if (level >= currentLevel)
+	{
+		Serial.print(F(s));
+		Serial.print(F("0x"));
+		Serial.print((int)v, HEX);
+	}
 #endif
 }
 

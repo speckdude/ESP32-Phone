@@ -127,7 +127,7 @@ int setPDUMode(PDUMode mode)
 	/*old code....not super relevant. Test case for callbacks?
 	if (getCommandResponse(myModem) == AT_ERROR) //if error return
 	{
-		PRINTS("PDU Response ERROR\n");
+		PRINTS("PDU Response ERROR\n", ERROR);
 		return -1;
 	}
 	*/
@@ -159,12 +159,12 @@ int sendASCIITextMessage(char *phoneNumber, char *message)
 	strcat(tempMessage, "\x1A");
 	//todo, figure out PDU message encoding....
 	//Workaround for now
-	if (sendModemCommand(command, 1000) == modemQueueSuccess)
+	if (sendModemCommand(command, 1000) == MODEM_QUEUE_SUCESS)
 	{
 		//just *PRAY* to the Cell phone gods that the text data is entered into the command array one behind the modemCommand
 		return sendModemCommand(tempMessage, 1000);
 	}
-	return modemQueueTimeout;
+	return MODEM_QUEUE_TIMEOUT;
 }
 
 int readAllUnreadMessages()

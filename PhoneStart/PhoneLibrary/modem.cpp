@@ -35,6 +35,8 @@
 //~~~~~~~~~~~~~~~~~~~~~~~~Variables~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 char responseList[][16] = {"OK\r\n", "ERROR\r\n", "+CME ERROR\r\n", "+CMS ERROR\r\n"};
 
+char overflow[MODEM_MAX_COMMAND_SIZE];	//not too sure on the max size of an output line, but this seems like a decent guess.
+
 //~~~~~~~~~~~~~~~~~~~static function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -73,7 +75,7 @@ pModem createModem(int RXPin, int TXPin)
 	}
 
 	myModem->mdmComObj = createModemCommunicationsObj(RXPin, TXPin);
-	PRINTS("Modem Created\n");
+	PRINTS("Modem Created\n", STARTUP);
 	//modemWrite(myModem->myMdmComObj, "This is a test 2");
 	return myModem;
 }
@@ -109,44 +111,40 @@ int sendModemData(pModem myModem, char* data)
 //function readModemMessage
 //	This function is intended to read Messages from the modem
 //Input:
-//	myModem:	The modem object to expect response
-//
+//	myModem:			The modem object to expect response
+//	messageDataStorage:	A pointer to memory to store the Modem data. Memory must already be allocated
 //Returns:
 //	result code:	Error or success.
-resultCode readModemMessage(pModem myModem)
+resultCode readModemMessage(pModem myModem, char* messageDataStorage, int storageSize)
 {
-	char* response;
-	resultCode Code = AT_NOT_RESULT;
+	char* temp;
+	resultCode result = AT_NOT_RESULT;
+	int charsApnd = 0;
 
-	while (Code == AT_NOT_RESULT)
+	//read until either storage is full or response code is read.
+	while (true)
 	{
-		response = modemReadLine(myModem->mdmComObj);
-		Code = checkForResultCode(response);
-
+		temp = modemReadLine(myModem->mdmComObj);
+		result = checkForResultCode(temp);
+		//if we have a result, return
+		if (result != AT_NOT_RESULT)
+		{
+			break;
+		}
+		//else check to see if there is space to append to data storage
+		if ((strlen(temp) + charsApnd) > storageSize)
+		{
+			result = AT_INPUT_OVERFLOW;
+			//What to do with last string read? hmmm... store in a static buffer for now I suppose
+			strcpy(overflow, temp);
+			PRINTS("Modem Read Buffer Overflow", ERROR);
+			break;
+		}
+		//Append data
+		strcpy(messageDataStorage + charsApnd, temp);
+		charsApnd += strlen(temp);
 	}
-	return Code;
-}
-
-
-
-//function getCommandResponse
-//	This function is intended to get response from an AT command
-//Input:
-//	myModem:	The modem object to expect response
-//
-//Returns:
-//	Integer:	Error or success.
-resultCode getCommandResponse(pModem myModem)
-{
-	char *response;
-	resultCode Code = AT_NOT_RESULT;
-
-	while (Code == AT_NOT_RESULT)
-	{
-		response = modemReadLine(myModem->mdmComObj);
-		Code = checkForResultCode(response);
-	}
-	return Code;
+	return result;
 }
 
 //function checkExpectedResponse
@@ -183,5 +181,13 @@ int checkModem(pModem myModem)
 	return modemDataReady(myModem->mdmComObj);
 }
 
+//function flushModemOutput
+//	clears all serial data from the modem
+//Input:
+//	myModem:		the modem object to check for data
+void flushModemOutput(pModem myModem)
+{
+	modemReadAllData(myModem->mdmComObj);
+}
 
 #endif

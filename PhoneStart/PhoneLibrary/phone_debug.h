@@ -32,16 +32,22 @@
 //defines
 //check constants file for debug value
 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ENUMS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+enum debugLevel {
+	LOGGING,
+	STARTUP,
+	ERROR,
+	TESTING
+};
+
 //~~~~~~~~~~~~~~~~~~~~~~~~~type definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-//~~~~~~~~~~~~~~~~~~~static function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
 //~~~~~~~~~~~~~~~~~~~~~~~function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void setDebugLevel(debugLevel level);
 
-void PRINTS(char *s);
-void PRINT(char *s, char *v);
-void PRINTX(char *s, char *v);
+void PRINTS(char *s, debugLevel level);
+void PRINT(char *s, char *v, debugLevel level);
+void PRINTX(char *s, char *v, debugLevel level);
 
 #endif

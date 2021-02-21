@@ -108,10 +108,10 @@ int modemDataReady(pModemCommunicationsObj myMdmComObj)
 char* modemReadLine(pModemCommunicationsObj myMdmComObj)
 {
 	int numRead;
-	numRead = myMdmComObj->serial->readBytesUntil('\n', myMdmComObj->inBuffer, sizeof(myMdmComObj->inBuffer));
+	numRead = myMdmComObj->serial->readBytesUntil('\n', myMdmComObj->inBuffer, (sizeof(myMdmComObj->inBuffer)-2));
 	myMdmComObj->inBuffer[numRead] = '\n'; //replace terminator & ensure null character is at end of char array
 	myMdmComObj->inBuffer[numRead+1] = '\0'; //ensure null character is at end of char array
-	PRINT("line read: ", myMdmComObj->inBuffer);
+	PRINT("line read: ", myMdmComObj->inBuffer, LOGGING);
 	return myMdmComObj->inBuffer;
 }
 
@@ -128,7 +128,7 @@ char* modemReadAllData(pModemCommunicationsObj myMdmComObj)
 	numRead = myMdmComObj->serial->available();
 	myMdmComObj->serial->readBytes(myMdmComObj->inBuffer, numRead);
 	myMdmComObj->inBuffer[numRead] = '\0'; //ensure null character is at end of char array
-	PRINT("data read: ", myMdmComObj->inBuffer);
+	PRINT("data read: ", myMdmComObj->inBuffer, LOGGING);
 	return myMdmComObj->inBuffer;
 }
 
