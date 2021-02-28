@@ -29,33 +29,92 @@
 #ifndef MODEM_C
 #define MODEM_C
 
+
 //includes
 #include "modem.h"
 
+//~~~~~~~~~~~~~~~~~~~~~~~~local Defines~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#define LIST_ENTRY_SIZE 16
 //~~~~~~~~~~~~~~~~~~~~~~~~Variables~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-char responseList[][16] = {"OK\r\n", "ERROR\r\n", "+CME ERROR\r\n", "+CMS ERROR\r\n"};
+
+modem myModem;
+SemaphoreHandle_t modemDataAccessMutex;	//control access to last command string
+
+char		ATResponseList[][LIST_ENTRY_SIZE] = {"OK\r\n", "ERROR\r\n", "> "};
+commandResultCode	AtResponseEnumList[]	  = { AT_OK,	 AT_ERROR, AT_WAITING_FOR_INPUT};
+
+char				unsolicitedResponseList[][LIST_ENTRY_SIZE] = { "+CME ERROR: ", "+CMS ERROR: ", "RING" };
+unsolicitedDataType	unsolicitedResponseEnumList[]			   = {  CME_ERROR,       CMS_ERROR,     RING };
+
 
 char overflow[MODEM_MAX_COMMAND_SIZE];	//not too sure on the max size of an output line, but this seems like a decent guess.
-
+char lastCommandSent[MODEM_MAX_COMMAND_SIZE]; //to store the last data sent to the modem. Used to determine if incoming data is a response or unsolicited
 //~~~~~~~~~~~~~~~~~~~static function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+static bool checkIfCommandResponse(char* input);
+static void setLastCommandSent(char* data);
 
-
+static messageType			getMessageType(char* input);
+static commandResultCode	checkForResultCode(char* input);
+static unsolicitedDataType	getUnsolicitedResponseType(char* input);
 //~~~~~~~~~~~~~~~~~~~static functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-static resultCode checkForResultCode(char *responseStr)
-{
-	if(strstr(responseStr, "OK\r\n") != NULL)
-	{
-		return AT_OK;
-	}
-	if (strstr(responseStr, "ERROR\r\n") != NULL)
-	{
-		return AT_ERROR;
-	}
 
+static messageType getMessageType(char* input)
+{
+	//check if empty string
+	if (strcmp(input, "\r\n") == 0) return EMPTY_MESSAGE;
+	if (checkIfCommandResponse(input)) return COMMAND_RESPONSE;
+	return UNSOLICITED_DATA;
+}
+
+static commandResultCode checkForResultCode(char *input)
+{
+	for (int i = 0; i < (sizeof(ATResponseList) / LIST_ENTRY_SIZE); i++)
+	{
+		if (strncmp(input, ATResponseList[i], strlen(ATResponseList[i])) == 0)
+		{
+			return AtResponseEnumList[i];
+		}
+	}
 	return AT_NOT_RESULT;
 }
 
+static unsolicitedDataType getUnsolicitedResponseType(char* input)
+{
+	for (int i = 0; i < (sizeof(unsolicitedResponseList)/LIST_ENTRY_SIZE); i++)
+	{
+		if (strncmp(input, unsolicitedResponseList[i], strlen(unsolicitedResponseList[i])) == 0)
+		{
+			return unsolicitedResponseEnumList[i];
+		}
+	}
+	return UNKNOWN_UNSOLICITED_DATA;
+}
 
+static bool checkIfCommandResponse(char* input)
+{
+	bool isResponse = false;
+	//reserve mutex
+	xSemaphoreTake(modemDataAccessMutex, portMAX_DELAY);
+	//check if string is same as lastDataSent
+	if(lastCommandSent[0] != '\0' && 
+		strncmp(lastCommandSent, input, strlen(lastCommandSent) - 2) == 0) 
+	{ 
+		isResponse = true; 
+	}
+	//release mutex
+	xSemaphoreGive(modemDataAccessMutex);
+
+	return isResponse;
+}
+
+static void setLastCommandSent(char* data)
+{
+	//take mutex, and set data
+	xSemaphoreTake(modemDataAccessMutex, portMAX_DELAY);
+	strcpy(lastCommandSent, data);
+	//release mutex
+	xSemaphoreGive(modemDataAccessMutex);
+}
 
 //~~~~~~~~~~~~~~~~~~~~~~~functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -69,15 +128,11 @@ static resultCode checkForResultCode(char *responseStr)
 
 pModem createModem(int RXPin, int TXPin)
 {
-	pModem myModem = (pModem)malloc(sizeof(modem));
-	if (myModem == NULL) {
-		return NULL;
-	}
-
-	myModem->mdmComObj = createModemCommunicationsObj(RXPin, TXPin);
+	myModem.mdmComObj = createModemCommunicationsObj(RXPin, TXPin);
+	modemDataAccessMutex = xSemaphoreCreateMutex();
+	setLastCommandSent("");
 	PRINTS("Modem Created\n", STARTUP);
-	//modemWrite(myModem->myMdmComObj, "This is a test 2");
-	return myModem;
+	return &myModem;
 }
 
 
@@ -88,10 +143,9 @@ pModem createModem(int RXPin, int TXPin)
 //Output:
 //	None
 //
-void destroyModem(pModem myModem)
+void destroyModem()
 {
-	destroyModemCommunicationsObj(myModem->mdmComObj);
-	free(myModem);
+	destroyModemCommunicationsObj(myModem.mdmComObj);
 }
 
 
@@ -103,9 +157,10 @@ void destroyModem(pModem myModem)
 //
 //Returns:
 //	Integer:	Error or success.
-int sendModemData(pModem myModem, char* data)
+int sendModemData(char* data, bool isCommand)
 {
-	modemWrite(myModem->mdmComObj, data);
+	if(isCommand) setLastCommandSent(data);
+	modemWrite(myModem.mdmComObj, data);
 }
 
 //function readModemMessage
@@ -115,58 +170,64 @@ int sendModemData(pModem myModem, char* data)
 //	messageDataStorage:	A pointer to memory to store the Modem data. Memory must already be allocated
 //Returns:
 //	result code:	Error or success.
-resultCode readModemMessage(pModem myModem, char* messageDataStorage, int storageSize)
+modemMessage readModemMessage(char* messageDataStorage, int storageSize)
 {
 	char* temp;
-	resultCode result = AT_NOT_RESULT;
+	modemMessage messageInfo;
 	int charsApnd = 0;
+	//clear old data out
+	strcpy(messageDataStorage, "\n");
+	//read first line, so we can figure out type of data
+	temp = modemReadLine(myModem.mdmComObj);
 
-	//read until either storage is full or response code is read.
-	while (true)
+	switch(messageInfo.type = getMessageType(temp))
 	{
-		temp = modemReadLine(myModem->mdmComObj);
-		result = checkForResultCode(temp);
-		//if we have a result, return
-		if (result != AT_NOT_RESULT)
-		{
+		case EMPTY_MESSAGE:
 			break;
-		}
-		//else check to see if there is space to append to data storage
-		if ((strlen(temp) + charsApnd) > storageSize)
-		{
-			result = AT_INPUT_OVERFLOW;
-			//What to do with last string read? hmmm... store in a static buffer for now I suppose
-			strcpy(overflow, temp);
-			PRINTS("Modem Read Buffer Overflow", ERROR);
+
+		case COMMAND_RESPONSE:
+			//read until either storage is full or response code is read.
+			while (true)
+			{
+				temp = modemReadLine(myModem.mdmComObj);
+				messageInfo.result.commandResult = checkForResultCode(temp);
+				//if we have a result, return
+				if (messageInfo.result.commandResult != AT_NOT_RESULT)
+				{
+					break;
+				}
+				//else check to see if there is space to append to data storage
+				if ((strlen(temp) + charsApnd) > storageSize)
+				{
+					messageInfo.result.commandResult = AT_INPUT_OVERFLOW;
+					//What to do with last string read? hmmm... store in a static buffer for now I suppose
+					strcpy(overflow, temp);
+					PRINTS("Modem Read Buffer Overflow", ERROR);
+					break;
+				}
+				//Append data
+				strcpy(messageDataStorage + charsApnd, temp);
+				charsApnd += strlen(temp);
+			}
 			break;
-		}
-		//Append data
-		strcpy(messageDataStorage + charsApnd, temp);
-		charsApnd += strlen(temp);
-	}
-	return result;
-}
 
-//function checkExpectedResponse
-//	This function is intended to check for a specific expected response
-//Input:
-//	myModem:	The modem object to expect response
-//	response:	The string to expect
-//Returns:
-//	Integer:	Error(-1)if expected response not found or success(1) if found.
-int checkExpectedResponse(pModem myModem, char *response)
-{
-	char *recievedData;
+		case UNSOLICITED_DATA:
+			messageInfo.result.unsolicited = getUnsolicitedResponseType(temp);
+			if (messageInfo.result.unsolicited == UNKNOWN_UNSOLICITED_DATA)
+			{
+				messageInfo.type = UNKNOWN_MESSAGE;
+			}
 
-	if (checkModem(myModem))
-	{
-		recievedData = modemReadAllData(myModem->mdmComObj);
-		if (strstr(recievedData, response) != NULL)
-		{
-			return 1;
-		}
+			strcpy(messageDataStorage + charsApnd, temp);
+			break;
+
+		default:
+			messageInfo.type = UNKNOWN_MESSAGE;
+			strcpy(messageDataStorage + charsApnd, temp);
+			break;
 	}
-	return -1;
+
+	return messageInfo;
 }
 
 //function checkModem
@@ -176,18 +237,18 @@ int checkExpectedResponse(pModem myModem, char *response)
 //
 //Returns:
 //	Integer:	number of bytes waiting in buffer
-int checkModem(pModem myModem)
+int checkModem()
 {
-	return modemDataReady(myModem->mdmComObj);
+	return modemDataReady(myModem.mdmComObj);
 }
 
 //function flushModemOutput
 //	clears all serial data from the modem
 //Input:
 //	myModem:		the modem object to check for data
-void flushModemOutput(pModem myModem)
+void flushModemOutput()
 {
-	modemReadAllData(myModem->mdmComObj);
+	modemReadAllData(myModem.mdmComObj);
 }
 
 #endif

@@ -33,34 +33,39 @@
 #include "modemManager.h"
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~type definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//modemCommand data struct
-typedef struct modemCommand {
-	char command[MODEM_MAX_COMMAND_SIZE];
+//modemData data struct
+typedef struct modemData {
+	char data[MODEM_MAX_COMMAND_SIZE];
+	modemDataType dataType;
 };
-typedef modemCommand* pModemCommand;
+typedef modemData* pmodemData;
 
+typedef short modemDataLoc;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~Variables~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //modem
-pModem myModem;
+pModem pMyModem; //handle to our modem.
+
 //thread handles
 TaskHandle_t modemReaderManager;
 TaskHandle_t modemWriterManager;
 
 //Queue Handles
-QueueHandle_t availableModemCommands;	//FIFO queue for available command space
+QueueHandle_t availablemodemData;	//FIFO queue for available command space
 QueueHandle_t commandWriteQueue;		//FIFO queue of commands to be written to modem
 QueueHandle_t sentCommand;				//Mailbox Queue of last sent command. Used to guaruntee only one command sent at a time
 
 //buffers/Arrays
-modemCommand commandArray[QUEUE_SIZE];	//Allocated space for our modemCommands
+modemData modemDataArray[QUEUE_SIZE];	//Allocated space for our modemData
 char modemResponseBuffer[MODEM_IN_BUFFER_SIZE]; //Allocated space for data coming from the Modem
 
 //~~~~~~~~~~~~~~~~~~~static function declarations~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 static void handleIncomingModemData();
-static void handleOutgoingModemData(modemCommandLoc mdmCmd);
+static void handleOutgoingModemData(modemDataLoc mdmCmd);
 static void runModemReader(void* myModemInfo);
 static void runModemWriter(void* info);
+
+static modemQueueResult enqueueCommand(modemDataLoc modemDataArrayLoc, int timeout);
 //~~~~~~~~~~~~~~~~~~~static functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 //function runModemResponse
@@ -70,14 +75,11 @@ static void runModemWriter(void* info);
 static void runModemReader(void* info)
 {
 	PRINTS("Modem Response Thread Started\n", STARTUP);
-	//delay for startup. flush input buffer(replace this with a startup method at some point)
-	vTaskDelay(pdMS_TO_TICKS(10000));
-	flushModemOutput(myModem);
 
 	//deal with modem communications
 	while (true)
 	{
-		if (checkModem(myModem))
+		if (checkModem())
 		{
 			handleIncomingModemData();
 		}
@@ -93,9 +95,8 @@ static void runModemReader(void* info)
 static void runModemWriter(void* info)
 {
 	PRINTS("Modem Outgoing Thread Started\n", STARTUP);
-	modemCommandLoc currentCommand;
-	vTaskDelay(pdMS_TO_TICKS(10000));
-
+	modemDataLoc currentCommand;
+	vTaskDelay(10000);
 	while (true)
 	{
 		xQueueReceive(commandWriteQueue, &currentCommand, portMAX_DELAY);
@@ -109,29 +110,43 @@ static void runModemWriter(void* info)
 //	None
 static void handleIncomingModemData()
 {
-	modemCommandLoc recievedCommandLoc;
-	resultCode result;
+	modemDataLoc recievedCommandLoc;
+	modemMessage result;
 
 	//Todo, work in progress
-	result = readModemMessage(myModem, modemResponseBuffer, MODEM_IN_BUFFER_SIZE);
-	PRINT("Modem Message Recieved:\n", modemResponseBuffer, TESTING);
-	//handle the modem message
-	//check if the message is a result of a command
+	result = readModemMessage(modemResponseBuffer, MODEM_IN_BUFFER_SIZE);
+	
+	switch (result.type)	//handle the result
+	{
+		case COMMAND_RESPONSE:
+			PRINT("Modem Command Response Recieved:\n", modemResponseBuffer, TESTING);
+			//check if the message is a result of a command
+			xQueueReceive(sentCommand, &recievedCommandLoc, 0);
+			//todo, handle callback if one exists
+			break;
 
-	//else, check for modem events/status messages
+		case UNSOLICITED_DATA:
+			PRINT("Unsolicited Data Recieved:\n", modemResponseBuffer, TESTING);
+			break;
 
-	//todo
-	xQueueReceive(sentCommand, &recievedCommandLoc, 0);
-	//todo, handle callback if one exists
+		case EMPTY_MESSAGE:
+			break;
+
+		case UNKNOWN_MESSAGE:
+			PRINT("Unknown Data Recieved:\n", modemResponseBuffer, TESTING);
+			break;
+	}
+
 }
 
 //function handleOutgoingModemData
 //	handles Outgoing modem communications
 //Input:
 //	None
-static void handleOutgoingModemData(modemCommandLoc mdmCmd)
+static void handleOutgoingModemData(modemDataLoc mdmCmd)
 {
-	modemCommandLoc failedCommandLoc;
+	modemDataLoc failedCommandLoc;
+	bool isCommand;
 	//first send command to sentCommand Mailbox (blocking for maximum response wait time)
 	BaseType_t res = xQueueSend(sentCommand, &mdmCmd, pdMS_TO_TICKS(MODEM_RESPONSE_WAIT_TIME));
 	//check to see if we timed out...This shows the previous command response was never recieved...
@@ -145,7 +160,8 @@ static void handleOutgoingModemData(modemCommandLoc mdmCmd)
 		//should need no wait since we just emptied queue
 		xQueueSend(sentCommand, &mdmCmd, 0);
 	}
-	sendModemData(myModem, commandArray[mdmCmd].command);
+	isCommand = (modemDataArray[mdmCmd].dataType == COMMAND_DATA) ? true : false;
+	sendModemData(modemDataArray[mdmCmd].data, isCommand);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -156,17 +172,17 @@ static void handleOutgoingModemData(modemCommandLoc mdmCmd)
 void setupModemManager(int RXPin, int TXPin)
 {
 	//create atomic queues
-	availableModemCommands = xQueueCreate(QUEUE_SIZE, sizeof(modemCommandLoc));
-	commandWriteQueue = xQueueCreate(QUEUE_SIZE, sizeof(modemCommandLoc));
-	sentCommand = xQueueCreate(1, sizeof(modemCommandLoc));
+	availablemodemData = xQueueCreate(QUEUE_SIZE, sizeof(modemDataLoc));
+	commandWriteQueue = xQueueCreate(QUEUE_SIZE, sizeof(modemDataLoc));
+	sentCommand = xQueueCreate(1, sizeof(modemDataLoc));
 
 	//populate available modem commands array
 	for (short i = 0; i < QUEUE_SIZE; i++)
 	{
-		xQueueSend(availableModemCommands, &i, 0);
+		xQueueSend(availablemodemData, &i, 0);
 	}
 
-	myModem = createModem(RXPin, TXPin);
+	pMyModem = createModem(RXPin, TXPin);
 	PRINTS("My Modem Created Sucessfully\n", STARTUP);
 
 	//start modem response thread
@@ -187,54 +203,55 @@ void setupModemManager(int RXPin, int TXPin)
 		1,
 		&modemWriterManager,
 		0);
-
 }
 
 //function sendModemCommand
 //	Requests and populates a ModemCommand, then queues it to be sent
 //Input:
 //	command:		pointer to a character array
-//	maxTime:		max time to wait to Enqueue a command. 0 means return immediatly if queue already full
+//	timeout:		max time to wait to Enqueue a command. 0 means return immediatly if queue already full
 //returns:
-//	result, either success(1) or error code (< 0)
-modemQueueResult  sendModemCommand(char* command, int timeout)
+//	modemQueueResult enum
+modemQueueResult sendModemCommand(char* data, int timeout,  modemDataType dataType)
 {
-	modemCommandLoc arrayLoc;
+	modemDataLoc arrayLoc;
 
 	//check if command is longer than allowed length
-	if (strlen(command) > MODEM_MAX_COMMAND_SIZE)
+	if (strlen(data) > MODEM_MAX_COMMAND_SIZE)
 	{
 		return MODEM_COMMAND_OVERSIZED;
 	}
 
-	//request a ModemCommand
-	BaseType_t res = xQueueReceive(availableModemCommands, &arrayLoc, pdMS_TO_TICKS(timeout));
+	//request a modemData
+	BaseType_t res = xQueueReceive(availablemodemData, &arrayLoc, pdMS_TO_TICKS(timeout));
 	//if not timed out
 	if (res == pdPASS)
 	{
 		//if we have a queue position, settup and send command
-		strcpy(commandArray[arrayLoc].command, command);
+		strcpy(modemDataArray[arrayLoc].data, data);
+		modemDataArray[arrayLoc].dataType = dataType;
+
 		return enqueueCommand(arrayLoc, 0);
 	}
 
 	return MODEM_QUEUE_TIMEOUT;
 }
 
-//function enqueueModemCommand
-//	Queues modemCommand to be sent
+//function enqueuemodemData
+//	Queues modemData to be sent
 //Input:
-//	commandArrayLoc: Location of the command to be sent
+//	modemDataArrayLoc: Location of the command to be sent
 //	maxTime:	max time to wait to Enqueue a command. 0 means return immediatly if queue already full
 //returns:
-//	result, either success or timeout
-modemQueueResult enqueueCommand(modemCommandLoc commandArrayLoc, int timeout)
+//	modemQueueResult enum
+modemQueueResult enqueueCommand(modemDataLoc modemDataArrayLoc, int timeout)
 {
-	BaseType_t res = xQueueSend(commandWriteQueue, &commandArrayLoc, pdMS_TO_TICKS(timeout));
+	BaseType_t res = xQueueSend(commandWriteQueue, &modemDataArrayLoc, pdMS_TO_TICKS(timeout));
 	// if for some reason res fails (should NOT happen at this point)
 	if (res == errQUEUE_FULL)
 	{
-		PRINTS("ERROR: modemCommand location reserved but unable to be sent\n", ERROR);
-		xQueueSend(availableModemCommands, &commandArrayLoc, 0);
+		PRINTS("ERROR: modemData location reserved but unable to be sent\n", ERROR);
+		xQueueSend(availablemodemData, &modemDataArrayLoc, 0);
 	}
 
 	return ((res == pdPASS) ? MODEM_QUEUE_SUCESS : MODEM_QUEUE_TIMEOUT);

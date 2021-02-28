@@ -47,17 +47,19 @@ enum modemQueueResult
 	MODEM_QUEUE_SUCESS = 1
 };
 
-
-typedef short modemCommandLoc;
+enum modemDataType {
+	RAW_DATA,		//Raw data, Don't expect a modem Response
+	COMMAND_DATA		//Command, look for a response
+};
 
 //~~~~~~~~~~~~~~~~~~~~~~~~Variables~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-extern TaskHandle_t modemReadereManager;  //Not sure if other tasks will need these handles rn
+extern TaskHandle_t modemReaderManager;  //Not sure if other tasks will need these handles rn
 extern TaskHandle_t modemWriterManager;
 
 //~~~~~~~~~~~~~~~~~~~~~~~function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void setupModemManager(int RXPin, int TXPin);
-modemQueueResult  sendModemCommand(char* command, int timeout);
-modemQueueResult  enqueueCommand(modemCommandLoc commandArrayLoc, int timeout);
+modemQueueResult  sendModemCommand(char* command, int timeout, modemDataType dataType);
+//modemQueueResult  enqueueCommand(modemCommandLoc modemDataArrayLoc, int timeout);
 
 
 

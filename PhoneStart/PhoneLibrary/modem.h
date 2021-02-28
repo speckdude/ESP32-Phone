@@ -31,26 +31,41 @@
 
 //includes
 #include <string.h>
+#include <FreeRTOS.h> //mutex
 
 #include "modemCommunications.h"
 #include "phone_debug.h"	//for debug suppport
 #include "constants.h"
 
 ////~~~~~~~~~~~~~~~~~~~~~~~~enums~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-enum resultCode
+enum messageType
 {
-	AT_INPUT_OVERFLOW = -2, 
-	AT_NOT_RESULT=-1,
-	AT_OK,
-	AT_CONNECT,
-	AT_RING,
-	AT_NO_CARRIER,
-	AT_ERROR,
-	AT_NO_DIALTONE,
-	AT_BUSY,
-	AT_NO_ANSWER
+	COMMAND_RESPONSE,
+	UNSOLICITED_DATA,
+	EMPTY_MESSAGE,
+	UNKNOWN_MESSAGE
 };
 
+enum commandResultCode
+{
+	AT_INPUT_OVERFLOW = -2, 
+	AT_NOT_RESULT = -1,
+	AT_OK,
+	AT_WAITING_FOR_INPUT,
+	AT_ERROR
+};
+
+enum unsolicitedDataType
+{
+	RING,
+	CDS_NOTIFICATION,
+	CDSI_NOTIFICATION,
+	CMT_NOTIFICATION,
+	CMTI_NOTIFICATION,
+	CME_ERROR,
+	CMS_ERROR,
+	UNKNOWN_UNSOLICITED_DATA
+};
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~type definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 typedef struct modem {					//modem object
@@ -58,24 +73,30 @@ typedef struct modem {					//modem object
 };
 typedef modem *pModem;
 
+typedef struct modemMessage {
+	messageType type;
 
-//~~~~~~~~~~~~~~~~~~~static function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-static resultCode checkForResultCode(char *responseStr);
+	union result
+	{
+		commandResultCode commandResult;
+		unsolicitedDataType unsolicited;
+	}result;
+};
+
 
 //~~~~~~~~~~~~~~~~~~~~~~~function prototypes~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //create/destroy modem
 pModem createModem(int RXPin, int TXPin);
-void destroyModem(pModem myModem);
+void destroyModem();
 
 //~~~~~~~~~~modem functions~~~~~~~~~~~~~
 //modem write
-int sendModemData(pModem myModem, char* data);
+int sendModemData(char* data, bool isCommand);
 
 //modem read
-resultCode readModemMessage(pModem myModem, char* messageDataStorage, int storageSize);
-int checkExpectedResponse(pModem myModem, char *response);
+modemMessage readModemMessage(char* messageDataStorage, int storageSize);
 
 //misc
-void flushModemOutput(pModem myModem);
-int checkModem(pModem myModem);
+void flushModemOutput();
+int checkModem();
 #endif
