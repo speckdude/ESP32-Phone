@@ -34,11 +34,12 @@
 #include <FreeRTOS.h> //mutex
 
 #include "modemCommunications.h"
+#include "modemManager.h"
 #include "phone_debug.h"	//for debug suppport
 #include "constants.h"
 
 ////~~~~~~~~~~~~~~~~~~~~~~~~enums~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-enum messageType
+enum MessageType
 {
 	COMMAND_RESPONSE,
 	UNSOLICITED_DATA,
@@ -46,16 +47,16 @@ enum messageType
 	UNKNOWN_MESSAGE
 };
 
-enum commandResultCode
+enum CommandResultCode
 {
-	AT_INPUT_OVERFLOW = -2, 
+	AT_BUFFER_OVERFLOW = -2,
 	AT_NOT_RESULT = -1,
 	AT_OK,
 	AT_WAITING_FOR_INPUT,
 	AT_ERROR
 };
 
-enum unsolicitedDataType
+enum UnsolicitedDataType
 {
 	RING,
 	CDS_NOTIFICATION,
@@ -68,19 +69,19 @@ enum unsolicitedDataType
 };
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~type definitions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-typedef struct modem {					//modem object
+typedef struct Modem {					//modem object
 	pModemCommunicationsObj mdmComObj; //pointer to modem communications object
 };
-typedef modem *pModem;
+typedef Modem *pModem;
 
-typedef struct modemMessage {
-	messageType type;
-
-	union result
+typedef struct ModemMessage {
+	MessageType type;
+	union Result
 	{
-		commandResultCode commandResult;
-		unsolicitedDataType unsolicited;
+		CommandResultCode commandResult;
+		UnsolicitedDataType unsolicited;
 	}result;
+	char* recievedMessage;
 };
 
 
@@ -94,7 +95,8 @@ void destroyModem();
 int sendModemData(char* data, bool isCommand);
 
 //modem read
-modemMessage readModemMessage(char* messageDataStorage, int storageSize);
+ModemMessage readModemMessage(char* messageDataStorage, int storageSize);
+CommandResultCode continueReadModemMessage(char* messageDataStorage, int storageSize);
 
 //misc
 void flushModemOutput();

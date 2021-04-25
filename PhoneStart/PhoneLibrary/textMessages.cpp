@@ -103,7 +103,7 @@ int setCNMIMode(CNMI_MODE cnmi_mode, CNMI_MT cnmi_mt, CNMI_BM cnmi_bm, CNMI_DS c
 	}
 	strcat(command, "\r");
 	//send command
-	return sendModemCommand(command, 0, COMMAND_DATA);
+	return sendModemCommand(command, 0, COMMAND_DATA_NO_RESULT);
 }
 
 //function setPDUMode
@@ -123,7 +123,7 @@ int setPDUMode(PDUMode mode)
 	if(mode = PDU_TEXT_MODE)		strcpy(command, "=0\r");
 	else if(mode = ASCII_TEXT_MODE)	strcpy(command, "=1\r");
 
-	sendModemCommand(command, 0, COMMAND_DATA);
+	sendModemCommand(command, 0, COMMAND_DATA_NO_RESULT);
 	/*old code....not super relevant. Test case for callbacks?
 	if (getCommandResponse(myModem) == AT_ERROR) //if error return
 	{
@@ -149,7 +149,7 @@ int sendASCIITextMessage(char *phoneNumber, char *message)
 {
 	char command[32];
 	char tempMessage[strlen(message) + 1];
-	modemQueueResult commandResult;
+	ModemQueueResult commandResult;
 
 	strcpy(command, "AT+CMGS=\"");
 	strcat(command, phoneNumber);
@@ -159,22 +159,32 @@ int sendASCIITextMessage(char *phoneNumber, char *message)
 	strcat(tempMessage, "\x1A");
 	//todo, figure out PDU message encoding....
 	//Workaround for now
-	if (sendModemCommand(command, 1000, COMMAND_DATA) == MODEM_QUEUE_SUCESS)
+	if (sendModemCommand(command, 1000, COMMAND_DATA_NO_RESULT) == MODEM_QUEUE_SUCCESS)
 	{
 		//just *PRAY* to the Cell phone gods that the text data is entered into the command array one behind the modemCommand
 		return sendModemCommand(tempMessage, 1000, RAW_DATA);
 	}
-	return MODEM_QUEUE_TIMEOUT;
+	return (int)MODEM_QUEUE_TIMEOUT;
 }
 
 int readAllUnreadMessages()
 {
 	char command[]= "AT+CMGL=\"REC UNREAD\"\r";
-	return sendModemCommand(command, 0, COMMAND_DATA);
+	return sendModemCommand(command, 0, COMMAND_DATA_RESULT_WANTED);
 }
 
 int readAllReadMessages()
 {
-	char command[]= "AT+CMGL=\"REC READ\"\r";
-	return sendModemCommand(command, 0, COMMAND_DATA);
+	CommandResult result;
+	Command command;
+	command.data = "AT+CMGL=\"REC READ\"\r";
+	command.modemDataType = COMMAND_DATA_RESULT_WANTED;
+	command.timeout = 0;
+
+	result = sendModemCommandGetResult(command);
+	//sendModemCommand(command, 0, COMMAND_DATA_RESULT_WANTED)
+
+	PRINT("Text Messages Recieved:\n", result.response, TESTING);
+
+	return result.commandResult;
 }

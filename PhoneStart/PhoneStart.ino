@@ -74,7 +74,7 @@ void sendTextRoutine()
   char message[161];
   int messageLen;
   Serial.print("enter phone Number\n");
-  while(Serial.available() < 1)  { /*just wait for input. this is bad but whatevs, todo*/}
+  while(Serial.available() < 10)  { /*just wait for input. this is bad but whatevs, todo*/}
   messageLen = Serial.available();
   Serial.readBytes(phoneNumber, messageLen);
   phoneNumber[messageLen] = '\0';

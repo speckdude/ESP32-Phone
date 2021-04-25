@@ -37,14 +37,14 @@
 #define LIST_ENTRY_SIZE 16
 //~~~~~~~~~~~~~~~~~~~~~~~~Variables~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-modem myModem;
+Modem myModem;
 SemaphoreHandle_t modemDataAccessMutex;	//control access to last command string
 
 char		ATResponseList[][LIST_ENTRY_SIZE] = {"OK\r\n", "ERROR\r\n", "> "};
-commandResultCode	AtResponseEnumList[]	  = { AT_OK,	 AT_ERROR, AT_WAITING_FOR_INPUT};
+CommandResultCode	AtResponseEnumList[]	  = { AT_OK,	 AT_ERROR, AT_WAITING_FOR_INPUT};
 
 char				unsolicitedResponseList[][LIST_ENTRY_SIZE] = { "+CME ERROR: ", "+CMS ERROR: ", "RING" };
-unsolicitedDataType	unsolicitedResponseEnumList[]			   = {  CME_ERROR,       CMS_ERROR,     RING };
+UnsolicitedDataType	unsolicitedResponseEnumList[]			   = {  CME_ERROR,       CMS_ERROR,     RING };
 
 
 char overflow[MODEM_MAX_COMMAND_SIZE];	//not too sure on the max size of an output line, but this seems like a decent guess.
@@ -53,12 +53,12 @@ char lastCommandSent[MODEM_MAX_COMMAND_SIZE]; //to store the last data sent to t
 static bool checkIfCommandResponse(char* input);
 static void setLastCommandSent(char* data);
 
-static messageType			getMessageType(char* input);
-static commandResultCode	checkForResultCode(char* input);
-static unsolicitedDataType	getUnsolicitedResponseType(char* input);
+static MessageType			getMessageType(char* input);
+static CommandResultCode	checkForResultCode(char* input);
+static UnsolicitedDataType	getUnsolicitedResponseType(char* input);
 //~~~~~~~~~~~~~~~~~~~static functions~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-static messageType getMessageType(char* input)
+static MessageType getMessageType(char* input)
 {
 	//check if empty string
 	if (strcmp(input, "\r\n") == 0) return EMPTY_MESSAGE;
@@ -66,7 +66,7 @@ static messageType getMessageType(char* input)
 	return UNSOLICITED_DATA;
 }
 
-static commandResultCode checkForResultCode(char *input)
+static CommandResultCode checkForResultCode(char *input)
 {
 	for (int i = 0; i < (sizeof(ATResponseList) / LIST_ENTRY_SIZE); i++)
 	{
@@ -78,7 +78,7 @@ static commandResultCode checkForResultCode(char *input)
 	return AT_NOT_RESULT;
 }
 
-static unsolicitedDataType getUnsolicitedResponseType(char* input)
+static UnsolicitedDataType getUnsolicitedResponseType(char* input)
 {
 	for (int i = 0; i < (sizeof(unsolicitedResponseList)/LIST_ENTRY_SIZE); i++)
 	{
@@ -166,17 +166,17 @@ int sendModemData(char* data, bool isCommand)
 //function readModemMessage
 //	This function is intended to read Messages from the modem
 //Input:
-//	myModem:			The modem object to expect response
 //	messageDataStorage:	A pointer to memory to store the Modem data. Memory must already be allocated
+//	storageSize:		size of the storage allocated
 //Returns:
 //	result code:	Error or success.
-modemMessage readModemMessage(char* messageDataStorage, int storageSize)
+ModemMessage readModemMessage(char* messageDataStorage, int storageSize)
 {
 	char* temp;
-	modemMessage messageInfo;
+	ModemMessage messageInfo;
 	int charsApnd = 0;
 	//clear old data out
-	strcpy(messageDataStorage, "\n");
+	strcpy(messageDataStorage, "\0");
 	//read first line, so we can figure out type of data
 	temp = modemReadLine(myModem.mdmComObj);
 
@@ -199,10 +199,10 @@ modemMessage readModemMessage(char* messageDataStorage, int storageSize)
 				//else check to see if there is space to append to data storage
 				if ((strlen(temp) + charsApnd) > storageSize)
 				{
-					messageInfo.result.commandResult = AT_INPUT_OVERFLOW;
+					messageInfo.result.commandResult = AT_BUFFER_OVERFLOW;
 					//What to do with last string read? hmmm... store in a static buffer for now I suppose
 					strcpy(overflow, temp);
-					PRINTS("Modem Read Buffer Overflow", ERROR);
+					PRINTS("Modem Read Buffer Overflow\n", ERROR);
 					break;
 				}
 				//Append data
@@ -228,6 +228,49 @@ modemMessage readModemMessage(char* messageDataStorage, int storageSize)
 	}
 
 	return messageInfo;
+}
+
+//function continueReadModemMessage
+//	This function is intended to read Messages from the modem
+//Input:
+//	myModem:			The modem object to expect response
+//	messageDataStorage:	A pointer to memory to store the Modem data. Memory must already be allocated
+//Returns:
+//	result code:	Error or success.
+CommandResultCode continueReadModemMessage(char* messageDataStorage, int storageSize)
+{
+	char* temp;
+	int charsApnd = 0;
+	CommandResultCode result;
+
+	//copy the overflowArray first
+	strcpy(messageDataStorage, overflow);
+	charsApnd = strlen(overflow);
+
+	while (true)
+	{
+		temp = modemReadLine(myModem.mdmComObj);
+		result = checkForResultCode(temp);
+		//if we have a result, return
+		if (result != AT_NOT_RESULT)
+		{
+			break;
+		}
+		//else check to see if there is space to append to data storage
+		if ((strlen(temp) + charsApnd) > storageSize)
+		{
+			result = AT_BUFFER_OVERFLOW;
+			//What to do with last string read? hmmm... store in a static buffer for now I suppose
+			strcpy(overflow, temp);
+			PRINTS("Modem Read Buffer Overflow\n", ERROR);
+			break;
+		}
+		//Append data
+		strcpy(messageDataStorage + charsApnd, temp);
+		charsApnd += strlen(temp);
+	}
+
+	return result;
 }
 
 //function checkModem
